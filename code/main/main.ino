@@ -13,39 +13,163 @@
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 
+Adafruit_8x8matrix leftEye = Adafruit_8x8matrix();
+Adafruit_8x8matrix rightEye = Adafruit_8x8matrix();
+Adafruit_8x8matrix heart = Adafruit_8x8matrix();
+
 static const unsigned long REFRESH_INTERVAL = 50; // ms
 static unsigned long previousMillis = 0;
 
 static const uint8_t PROGMEM
-happy_bmp[] =
+smile_bmp[] =
+{ B00011000,
+  B00111100,
+  B01111110,
+  B11111111,
+  B11111011,
+  B01111110,
+  B00111100,
+  B00011000
+},
+neutral_left_bmp[] =
+{ B00011000,
+  B00111100,
+  B01111110,
+  B11110111,
+  B11111111,
+  B01111110,
+  B00111100,
+  B00011000
+},
+neutral_right_bmp[] =
+{ B00011000,
+  B00111100,
+  B01111110,
+  B11101111,
+  B11111111,
+  B01111110,
+  B00111100,
+  B00011000
+},
+neutral_downleft_bmp[] =
+{ B00011000,
+  B00111100,
+  B01111110,
+  B11111111,
+  B11110111,
+  B01111110,
+  B00111100,
+  B00011000
+},
+neutral_downright_bmp[] =
+{ B00011000,
+  B00111100,
+  B01111110,
+  B11111111,
+  B11101111,
+  B01111110,
+  B00111100,
+  B00011000
+},
+twinkle_bmp[] =
 { B00000000,
   B00000000,
   B00000000,
   B00000000,
+  B11000011,
+  B00111100,
+  B00000000,
+  B00000000
+},
+x_bmp[] =
+{ B10000001,
   B01000010,
   B00100100,
   B00011000,
+  B00011000,
+  B00100100,
+  B01000010,
+  B10000001
+},
+angry_right_bmp[] =
+{ B01110000,
+  B11111000,
+  B11111100,
+  B11100110,
+  B11100111,
+  B11111111,
+  B01111110,
+  B00111100
+},
+angry_left_bmp[] =
+{ B00001110,
+  B00011111,
+  B00111111,
+  B01100111,
+  B11100111,
+  B11111111,
+  B01111110,
+  B00111100
+},
+little_angry_right_bmp[] =
+{ B01111000,
+  B11111100,
+  B11111110,
+  B11110111,
+  B11111111,
+  B11111111,
+  B11111111,
+  B01111110
+},
+little_angry_left_bmp[] =
+{ B00011110,
+  B00111111,
+  B01111111,
+  B11101111,
+  B11111111,
+  B11111111,
+  B11111111,
+  B01111110
+},
+more_angry_right_bmp[] =
+{ B01110000,
+  B11111000,
+  B11111100,
+  B11100110,
+  B11100111,
+  B11111111,
+  B11111111,
+  B01111110
+},
+more_angry_left_bmp[] =
+{ B00001110,
+  B00011111,
+  B00111111,
+  B01100111,
+  B11100111,
+  B11111111,
+  B11111111,
+  B01111110
+},
+heart_bmp[] =
+{ B01100110,
+  B11111111,
+  B11111111,
+  B11111111,
+  B11111111,
+  B01111110,
+  B00111100,
+  B00011000
+},
+heart_small_bmp[] =
+{ B00000000,
+  B01100110,
+  B11111111,
+  B11111111,
+  B01111110,
+  B00111100,
+  B00011000,
   B00000000
-},
-tired_bmp[] =
-{ B00111100,
-  B01000010,
-  B10100101,
-  B10000001,
-  B10111101,
-  B10000001,
-  B01000010,
-  B00111100
-},
-angry_bmp[] =
-{ B00111100,
-  B01000010,
-  B10100101,
-  B10000001,
-  B10011001,
-  B10100101,
-  B01000010,
-  B00111100
 };
 
 int photocellReading;
@@ -74,6 +198,12 @@ bool sleeping = false;
 
 void setup() {
   Serial.begin(9600);
+
+  // Pass the led-matrix addresses
+  leftEye.begin(0x70);
+  rightEye.begin(0x71);
+  heart.begin(0x72);
+
 
 }
 
@@ -112,21 +242,25 @@ void loop() {
   // STATUS: threshold exceeded
   if ((hunger > 29.99975 && hunger < 30.00025) || (happiness > 29.9998 && happiness < 30.0002) || (health > 28 && health < 30) || (energy > 29.9998 && energy < 30.0002)) {
     Serial.println("YOUR PET IS CRYING");
+    animationGettingAngry();
   }
 
   // STATUS: good
   if (hunger > 20 && happiness > 20 && health > 20 && energy > 20) {
-
+    //animationHappy();
+    animationHeartBeat();
   }
 
   // STATUS: critical
   if (hunger <= 20 || happiness <= 20 || health <= 20 || energy <= 20) {
     Serial.println("CRITICAL STATUS");
+    animationAngry();
   }
 
   // STATUS: dead
   if (hunger <= 0 || health <= 0 || happiness <= 0 || energy <= 0) {
     dead = true;
+    animationDead();
     delay(5000);
     softReset();
   }
@@ -134,6 +268,7 @@ void loop() {
   if (photocellReading <= 70) {
     sleeping = true;
     // Augen + Sound = Schlafen
+    animationSleepy();
   } else {
     sleeping = false;
     // Reset Augen + Sound?
@@ -141,6 +276,8 @@ void loop() {
 
   readTags();
 }
+
+
 
 boolean compareTag(int aa[14], int bb[14]) {
   boolean ff = false;
@@ -202,8 +339,186 @@ void readTags() {
   }
 }
 
-// Restarts the sketch
-// http://www.xappsoftware.com/wordpress/2013/06/24/three-ways-to-reset-an-arduino-board-by-code/
-void softReset() {
-  asm volatile ("  jmp 0");
+unsigned long current = millis();
+const int HEARTBEAT_INTERVAL = 1000;
+unsigned long previous = 0;
+
+void animationHeartBeat() {
+
+  if (current - previous >= HEARTBEAT_INTERVAL) {
+    previous = current;
+
+    Serial.println("Triggered");
+    Serial.print(previous);
+    heart.clear();
+    heart.drawBitmap(0, 0, heart_small_bmp, 8, 8, LED_ON);
+    heart.writeDisplay();
+  }
+  
+  heart.drawBitmap(0, 0, heart_bmp, 8, 8, LED_ON);
+  heart.writeDisplay();
 }
+
+void animationHappy() {
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_left_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_left_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_downleft_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_downleft_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_downright_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_downright_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, twinkle_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, twinkle_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(300);
+  leftEye.clear();
+  rightEye.clear();
+}
+
+void animationGettingAngry() {
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_left_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_left_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_downleft_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_downleft_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_downright_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_downright_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  rightEye.drawBitmap(0, 0, little_angry_right_bmp, 8, 8, LED_ON);
+  leftEye.drawBitmap(0, 0, little_angry_left_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  rightEye.drawBitmap(0, 0, more_angry_right_bmp, 8, 8, LED_ON);
+  leftEye.drawBitmap(0, 0, more_angry_left_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+  rightEye.drawBitmap(0, 0, angry_right_bmp, 8, 8, LED_ON);
+  leftEye.drawBitmap(0, 0, angry_left_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  delay(1000);
+  leftEye.clear();
+  rightEye.clear();
+}
+
+void animationAngry() {
+  leftEye.clear();
+  rightEye.clear();
+  rightEye.drawBitmap(0, 0, angry_right_bmp, 8, 8, LED_ON);
+  leftEye.drawBitmap(0, 0, angry_left_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  leftEye.clear();
+  rightEye.clear();
+}
+
+void animationDead() {
+  leftEye.clear();
+  rightEye.clear();
+  rightEye.drawBitmap(0, 0, x_bmp, 8, 8, LED_ON);
+  leftEye.drawBitmap(0, 0, x_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  leftEye.clear();
+  rightEye.clear();
+}
+
+void animationSleepy() {
+  leftEye.clear();
+  rightEye.clear();
+  rightEye.drawBitmap(0, 0, twinkle_bmp, 8, 8, LED_ON);
+  leftEye.drawBitmap(0, 0, twinkle_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  leftEye.clear();
+  rightEye.clear();
+}
+
+void animationTwinkle() {
+  animationHeartBeat();
+  int currentTime = millis();
+  leftEye.clear();
+  rightEye.clear();
+  leftEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+  rightEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+  leftEye.writeDisplay();
+  rightEye.writeDisplay();
+  if (currentTime > 1000) {
+    leftEye.clear();
+    rightEye.clear();
+    leftEye.drawBitmap(0, 0, neutral_right_bmp, 8, 8, LED_ON);
+    rightEye.drawBitmap(0, 0, twinkle_bmp, 8, 8, LED_ON);
+    leftEye.writeDisplay();
+    rightEye.writeDisplay();
+  }
+  if (currentTime > 1500) {
+    leftEye.clear();
+    rightEye.clear();
+    leftEye.drawBitmap(0, 0, neutral_downleft_bmp, 8, 8, LED_ON);
+    rightEye.drawBitmap(0, 0, neutral_downleft_bmp, 8, 8, LED_ON);
+    leftEye.writeDisplay();
+    rightEye.writeDisplay();
+  }
+  if (currentTime < 2500) {
+    leftEye.clear();
+    rightEye.clear();
+  }
+}
+
+  // Restarts the sketch
+  // http://www.xappsoftware.com/wordpress/2013/06/24/three-ways-to-reset-an-arduino-board-by-code/
+  void softReset() {
+    asm volatile ("  jmp 0");
+  }
