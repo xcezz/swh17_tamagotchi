@@ -77,7 +77,8 @@ int copperPin = 4;
 int photocellPin = A4;
 
 /* ------- PET STATS ------- */
-float scalingFactor = 10;
+// 200 = 3min until death
+float scalingFactor = 200;
 
 float hunger = 100;
 float happiness = 100;
@@ -197,7 +198,7 @@ void loop() {
 
   //STATUS: hungry
   if (hunger <= 20) {
-    analogWrite(vibrationMotorPin, 110);
+    analogWrite(vibrationMotorPin, 153);
 
     if (currentMillis - previousMillisVibration >= REFRESH_INTERVAL_VIBRATION) {
       previousMillisVibration = currentMillis;
@@ -281,6 +282,11 @@ void loop() {
         backStrip.show();
       }
     }
+  }
+
+  // If both front paws are pressed, do a soft reset
+  if (analogRead(fsrFrontRight) > 500 && analogRead(fsrFrontLeft) > 500) {
+    softReset();
   }
 
   readTags();
@@ -516,9 +522,9 @@ void animationHeart() {
 }
 
 void animationSad() {
+  heart.clear();
   heart.drawBitmap(0, 0, sadface_bmp, 8, 8, LED_ON);
   heart.writeDisplay();
-  heart.clear();
 }
 
 // Used for debugging stats
